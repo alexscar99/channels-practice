@@ -17,30 +17,32 @@ func main() {
 
 	c := make(chan string)
 
-	// create new child goroutine for each link
 	for _, link := range links {
 		go checkLink(link, c)
 	}
 
-	// wait for chan to return some value, assign to l, and then iterate
-	// pause for 5 seconds before creating new checkLink goroutine to not spam site
+	/*
+	  When we receive a message through chan, that new value is assigned to l
+	  We pass l off to the function literal and that string is copied in memory
+	  The goroutine has access to that copy instead of the original value of l
+	*/
 	for l := range c {
-		time.Sleep(5 * time.Second)
-		go checkLink(l, c)
+		go func(link string) {
+			time.Sleep(time.Second * 5)
+			checkLink(link, c)
+		}(l)
 	}
 }
 
 func checkLink(link string, c chan string) {
 	_, err := http.Get(link)
 
-	// if error, send status error msg through chan
 	if err != nil {
 		fmt.Println("Error:", link, "may currently be down.")
 		c <- link
 		return
 	}
 
-	// send status success msg through chan
 	fmt.Println(link, "is up and visible!")
 	c <- link
 }
